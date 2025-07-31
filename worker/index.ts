@@ -42,13 +42,11 @@ app.post("/api/examples/create/stored", async (c) => {
         Only reply with a single word and perhaps punctuation if it is the end of a sentence.`,
       input: word,
       model: "gpt-4.1",
+      store: true, //this is the default, being explicit
       previous_response_id
     });
-
     return c.json({response, previous_response_id: response.id, word: response.output_text});
-
-
-
 });
+
 
 export default app;
