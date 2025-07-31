@@ -93,7 +93,9 @@ app.post("/api/examples/create/function-calling", async (c) => {
   const { feedback } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
 
-  const input: OpenAI.Responses.ResponseInputItem[] = [{role: "user", content: feedback}];
+  const input: OpenAI.Responses.ResponseInputItem[] = [
+    { role: "user", content: feedback },
+  ];
   const tools: OpenAI.Responses.Tool[] = [
     {
       type: "function",
@@ -132,9 +134,9 @@ app.post("/api/examples/create/function-calling", async (c) => {
     tools,
   });
   const toolCall = firstResponse.output[0];
-  
+
   let finalResponse;
-  let result
+  let result;
   if (toolCall.type === "function_call" && toolCall.name === "submitFeedback") {
     const args = JSON.parse(toolCall.arguments);
     result = submitFeedback(args);
@@ -150,10 +152,114 @@ app.post("/api/examples/create/function-calling", async (c) => {
       model: "gpt-4.1",
       instructions,
       input,
-      tools
-    })
+      tools,
+    });
   }
-  return c.json({ firstResponse, finalResponse, outputText: finalResponse?.output_text, result });
+  return c.json({
+    firstResponse,
+    finalResponse,
+    outputText: finalResponse?.output_text,
+    result,
+  });
+});
+
+app.post("/api/examples/create/character-sample", async (c) => {
+  const { title } = await c.req.json();
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+
+  const response = await openai.responses.create({
+    model: "gpt-4.1",
+    instructions: `You will take a title of a piece of content and use your knowledge to create a character synopsis.
+    Use first and last names for the characters if you know them.
+    Be detailed in the characters are related and what situations they have interacted.`,
+    input: title,
+  });
+  return c.json({ outputText: response.output_text });
+});
+
+app.post("/api/examples/parse/relationships", async (c) => {
+  const { text } = await c.req.json();
+
+  const jsonSchema = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    title: "CharacterRelationshipGraph",
+    type: "object",
+    required: ["nodes", "edges"],
+    properties: {
+      nodes: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["id", "label"],
+          properties: {
+            id: {
+              type: "string",
+              pattern: "^[a-z0-9_\\-]+$",
+              description:
+                "Unique machine-friendly identifier for the character",
+            },
+            label: {
+              type: "string",
+              description: "Human-readable name of the character",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      edges: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["source", "target", "label", "type"],
+          properties: {
+            source: {
+              type: "string",
+              description: "ID of the source character (must match a node id)",
+            },
+            target: {
+              type: "string",
+              description: "ID of the target character (must match a node id)",
+            },
+            label: {
+              type: "string",
+              description: "Freeform description of the relationship",
+            },
+            type: {
+              type: "string",
+              enum: [
+                "family",
+                "friend",
+                "professional",
+                "romantic",
+                "antagonist",
+                "other",
+              ],
+              description:
+                "Categorized relationship type for filtering or styling",
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    additionalProperties: false,
+  };
+  
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+
+  const response = await openai.responses.parse({
+    model: "gpt-4.1",
+    input: text,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "relationships",
+        schema: jsonSchema
+      }
+    }
+  });
+  return c.json(response.output_parsed);
+
 });
 
 export default app;
