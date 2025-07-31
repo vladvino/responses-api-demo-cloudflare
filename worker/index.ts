@@ -171,7 +171,8 @@ app.post("/api/examples/create/character-sample", async (c) => {
     model: "gpt-4.1",
     instructions: `You will take a title of a piece of content and use your knowledge to create a character synopsis.
     Use first and last names for the characters if you know them.
-    Be detailed in the characters are related and what situations they have interacted.`,
+    Be detailed in the characters are related and what situations they have interacted.
+    Write this in paragraph format.`,
     input: title,
   });
   return c.json({ outputText: response.output_text });

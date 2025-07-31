@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import JSONPretty from 'react-json-pretty'
 import 'react-json-pretty/themes/monikai.css'
+import cytoscape from 'cytoscape'
 import './App.css'
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
             <CodeInterpreterExample />
           </div>
           <FunctionCallingExample />
+          <RelationshipViewer />
         </div>
       </div>
       
@@ -738,6 +740,281 @@ function FunctionCallingExample() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function RelationshipViewer() {
+  const [title, setTitle] = useState('')
+  const [text, setText] = useState('')
+  const [relationships, setRelationships] = useState<any>(null)
+  const [loadingSample, setLoadingSample] = useState(false)
+  const [loadingGraph, setLoadingGraph] = useState(false)
+  const [showJson, setShowJson] = useState(false)
+  const cyRef = useRef<HTMLDivElement>(null)
+  const cyInstance = useRef<any>(null)
+
+  const generateSample = async () => {
+    if (!title.trim()) return
+
+    setLoadingSample(true)
+    try {
+      const res = await fetch('/api/examples/create/character-sample', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title }),
+      })
+      const data = await res.json()
+      setText(data.outputText)
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setLoadingSample(false)
+  }
+
+  const analyzeRelationships = async () => {
+    if (!text.trim()) return
+
+    setLoadingGraph(true)
+    try {
+      const res = await fetch('/api/examples/parse/relationships', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      })
+      const data = await res.json()
+      setRelationships(data)
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setLoadingGraph(false)
+  }
+
+  useEffect(() => {
+    if (relationships && cyRef.current) {
+      if (cyInstance.current) {
+        cyInstance.current.destroy()
+      }
+
+      const nodes = relationships.nodes.map((node: any) => ({
+        data: { id: node.id, label: node.label }
+      }))
+
+      const edges = relationships.edges.map((edge: any, index: number) => ({
+        data: {
+          id: `edge-${index}`,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label,
+          type: edge.type
+        }
+      }))
+
+      cyInstance.current = cytoscape({
+        container: cyRef.current,
+        elements: [...nodes, ...edges],
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'background-color': '#4f46e5',
+              'label': 'data(label)',
+              'color': '#ffffff',
+              'text-valign': 'center',
+              'text-halign': 'center',
+              'font-size': '12px',
+              'font-weight': 'bold',
+              'width': '60px',
+              'height': '60px',
+              'border-width': '2px',
+              'border-color': '#3730a3'
+            }
+          },
+          {
+            selector: 'edge',
+            style: {
+              'line-color': (ele: any) => {
+                const type = ele.data('type')
+                switch (type) {
+                  case 'family': return '#ef4444'
+                  case 'romantic': return '#ec4899'
+                  case 'friend': return '#10b981'
+                  case 'professional': return '#3b82f6'
+                  case 'antagonist': return '#dc2626'
+                  default: return '#6b7280'
+                }
+              },
+              'target-arrow-color': (ele: any) => {
+                const type = ele.data('type')
+                switch (type) {
+                  case 'family': return '#ef4444'
+                  case 'romantic': return '#ec4899'
+                  case 'friend': return '#10b981'
+                  case 'professional': return '#3b82f6'
+                  case 'antagonist': return '#dc2626'
+                  default: return '#6b7280'
+                }
+              },
+              'target-arrow-shape': 'triangle',
+              'curve-style': 'bezier',
+              'label': 'data(label)',
+              'font-size': '10px',
+              'text-rotation': 'autorotate',
+              'text-margin-y': -10,
+              'width': '3px'
+            }
+          }
+        ],
+        layout: {
+          name: 'cose',
+          animate: true,
+          animationDuration: 1000,
+          nodeOverlap: 20,
+          idealEdgeLength: 100,
+          edgeElasticity: 100,
+          nestingFactor: 5,
+          gravity: 80,
+          numIter: 1000,
+          initialTemp: 200,
+          coolingFactor: 0.95,
+          minTemp: 1.0
+        }
+      })
+    }
+  }, [relationships])
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full p-2">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800">Relationship Viewer</h2>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        Generate character relationships from text and visualize them as an interactive graph using structured output.
+      </p>
+
+      <div className="space-y-6">
+        {/* Character Sample Helper */}
+        <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg">
+          <h3 className="font-semibold text-indigo-800 mb-3">Step 1: Generate Character Sample (Optional)</h3>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter a book, movie, or show title (e.g., 'Game of Thrones')"
+              className="flex-1 p-3 border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 placeholder-gray-500"
+            />
+            <button
+              onClick={generateSample}
+              disabled={loadingSample || !title.trim()}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl whitespace-nowrap"
+            >
+              {loadingSample ? 'Generating...' : 'Generate Sample'}
+            </button>
+          </div>
+        </div>
+
+        {/* Main Text Input */}
+        <div>
+          <label htmlFor="relationship-text" className="block text-sm font-medium text-gray-700 mb-2">
+            Step 2: Character Relationship Text
+          </label>
+          <textarea
+            id="relationship-text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Describe characters and their relationships. For example: 'Jon Snow is the bastard son of Ned Stark. He joins the Night's Watch and becomes friends with Samwell Tarly. Daenerys Targaryen is his aunt and they have a romantic relationship...'"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-gray-900 placeholder-gray-500"
+            rows={6}
+          />
+        </div>
+        
+        <button
+          onClick={analyzeRelationships}
+          disabled={loadingGraph || !text.trim()}
+          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          {loadingGraph ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Analyzing...
+            </span>
+          ) : (
+            'Analyze Relationships'
+          )}
+        </button>
+
+        {relationships && (
+          <div className="space-y-4">
+            {/* Graph Visualization */}
+            <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+              <h3 className="font-semibold text-gray-800 mb-3">Relationship Graph:</h3>
+              <div className="bg-white border border-gray-300 rounded-lg overflow-hidden">
+                <div ref={cyRef} style={{ width: '100%', height: '400px' }}></div>
+              </div>
+              <div className="mt-3 text-xs text-gray-600">
+                <div className="flex flex-wrap gap-4">
+                  <span><span className="inline-block w-3 h-3 bg-red-500 rounded mr-1"></span>Family</span>
+                  <span><span className="inline-block w-3 h-3 bg-pink-500 rounded mr-1"></span>Romantic</span>
+                  <span><span className="inline-block w-3 h-3 bg-green-500 rounded mr-1"></span>Friend</span>
+                  <span><span className="inline-block w-3 h-3 bg-blue-500 rounded mr-1"></span>Professional</span>
+                  <span><span className="inline-block w-3 h-3 bg-red-600 rounded mr-1"></span>Antagonist</span>
+                  <span><span className="inline-block w-3 h-3 bg-gray-500 rounded mr-1"></span>Other</span>
+                </div>
+              </div>
+            </div>
+
+            {/* JSON Viewer */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowJson(!showJson)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Structured Output (Nodes & Edges)</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showJson && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={relationships}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
