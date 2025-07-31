@@ -9,7 +9,11 @@
 /* Override any default button styles that might be causing black backgrounds */
 button {
 	background-color: transparent;
-	color: inherit;
+}
+
+/* Ensure gradient buttons have proper white text */
+button.bg-gradient-to-r {
+	color: white !important;
 }
 
 /* Ensure inputs and textareas have proper colors */

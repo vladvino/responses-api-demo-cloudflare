@@ -21,7 +21,10 @@ function App() {
             <BasicExample />
             <StreamingExample />
           </div>
-          <WordGameExample />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <WordGameExample />
+            <CodeInterpreterExample />
+          </div>
         </div>
       </div>
       
@@ -439,6 +442,129 @@ function WordGameExample() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function CodeInterpreterExample() {
+  const [story, setStory] = useState('')
+  const [result, setResult] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [showJson, setShowJson] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!story.trim()) return
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/examples/create/code-interpreter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ story }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-gradient-to-r from-teal-400 to-cyan-500 rounded-full p-2">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800">Code Interpreter Analysis</h2>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        Tell a story about time spent working, and AI will calculate your minimum wage earnings using code interpretation.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="story" className="block text-sm font-medium text-gray-700 mb-2">
+            Your Story
+          </label>
+          <textarea
+            id="story"
+            value={story}
+            onChange={(e) => setStory(e.target.value)}
+            placeholder="I worked on my project for 3 hours yesterday, then spent another 2 hours debugging today..."
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 resize-none text-gray-900 placeholder-gray-500"
+            rows={4}
+          />
+        </div>
+        
+        <button
+          type="submit"
+          disabled={loading || !story.trim()}
+          className="bg-gradient-to-r from-teal-600 to-cyan-600 text-white px-6 py-3 rounded-lg font-medium hover:from-teal-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Calculating...
+            </span>
+          ) : (
+            'Calculate Wages'
+          )}
+        </button>
+      </form>
+
+      {result && (
+        <div className="mt-8 space-y-4">
+          <div className="bg-teal-50 border border-teal-200 p-4 rounded-lg">
+            <h3 className="font-semibold text-teal-800 mb-2">Wage Analysis:</h3>
+            <p className="text-teal-700 whitespace-pre-wrap">{result.outputText}</p>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg">
+            <button
+              onClick={() => setShowJson(!showJson)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+            >
+              <span className="font-semibold text-gray-700">Full API Response</span>
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showJson && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <div className="rounded-lg overflow-hidden bg-gray-800">
+                  <JSONPretty 
+                    data={result}
+                    theme={{
+                      main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                      error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                      key: 'color:#f92672;',
+                      string: 'color:#a6e22e;',
+                      value: 'color:#ae81ff;',
+                      boolean: 'color:#ae81ff;',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
