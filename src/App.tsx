@@ -450,7 +450,7 @@ function Footer() {
         <div className="text-gray-600 mb-2">
           Built with 🧡 on{' '}
           <a 
-            href="https://workers.cloudflare.com" 
+            href="https://developers.cloudflare.com" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-orange-600 hover:text-orange-700 font-medium underline decoration-dotted underline-offset-2 hover:underline-offset-4 transition-all"
@@ -479,7 +479,7 @@ function Footer() {
         <div className="text-gray-500 text-sm">
           👀{' '}
           <a 
-            href="https://github.com/anthropics/responsible" 
+            href="https://github.com/craigsdennis/responses-api-workers" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-gray-700 hover:text-gray-900 font-medium underline decoration-dotted underline-offset-2 hover:underline-offset-4 transition-all"
