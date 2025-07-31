@@ -6,6 +6,18 @@
 	text-align: left;
 }
 
+/* Override any default button styles that might be causing black backgrounds */
+button {
+	background-color: transparent;
+	color: inherit;
+}
+
+/* Ensure inputs and textareas have proper colors */
+input, textarea {
+	background-color: white;
+	color: #111827; /* gray-900 */
+}
+
 /* Custom styles for code syntax highlighting */
 pre code {
 	display: block;
