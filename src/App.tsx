@@ -25,6 +25,7 @@ function App() {
             <WordGameExample />
             <CodeInterpreterExample />
           </div>
+          <FunctionCallingExample />
         </div>
       </div>
       
@@ -562,6 +563,178 @@ function CodeInterpreterExample() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FunctionCallingExample() {
+  const [feedback, setFeedback] = useState('')
+  const [result, setResult] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [showFirstResponse, setShowFirstResponse] = useState(false)
+  const [showFinalResponse, setShowFinalResponse] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!feedback.trim()) return
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/examples/create/function-calling', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ feedback }),
+      })
+      const data = await res.json()
+      setResult(data)
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-gradient-to-r from-emerald-400 to-green-500 rounded-full p-2">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800">Function Calling Demo</h2>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        Submit feedback about this demo and watch AI extract structured data and call functions.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="feedback" className="block text-sm font-medium text-gray-700 mb-2">
+            Your Feedback
+          </label>
+          <textarea
+            id="feedback"
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            placeholder="I really loved the streaming example! It was super cool to see the text appear in real-time. The UI could be a bit more colorful though. I'd rate this demo an 8 out of 10!"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-none text-gray-900 placeholder-gray-500"
+            rows={4}
+          />
+        </div>
+        
+        <button
+          type="submit"
+          disabled={loading || !feedback.trim()}
+          className="bg-gradient-to-r from-emerald-600 to-green-600 text-white px-6 py-3 rounded-lg font-medium hover:from-emerald-700 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Processing...
+            </span>
+          ) : (
+            'Submit Feedback'
+          )}
+        </button>
+      </form>
+
+      {result && (
+        <div className="mt-8 space-y-4">
+          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-lg">
+            <h3 className="font-semibold text-emerald-800 mb-2">Response:</h3>
+            <p className="text-emerald-700 whitespace-pre-wrap">{result.outputText}</p>
+          </div>
+
+          {result.result && (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+              <h3 className="font-semibold text-blue-800 mb-2">Function Call Result:</h3>
+              <div className="text-blue-700 text-sm space-y-1">
+                <div><strong>Success:</strong> {result.result.success ? 'Yes' : 'No'}</div>
+                <div><strong>Assigned To:</strong> {result.result.assignee}</div>
+                <div><strong>Submission ID:</strong> <span className="font-mono">{result.result.submissionId}</span></div>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowFirstResponse(!showFirstResponse)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">First API Response (Function Call)</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showFirstResponse ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showFirstResponse && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={result.firstResponse}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowFinalResponse(!showFinalResponse)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Final API Response (After Function)</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showFinalResponse ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showFinalResponse && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={result.finalResponse}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { streamText } from "hono/streaming";
 import OpenAI from "openai";
+import type { Tool } from "openai/resources/responses/responses.mjs";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -72,7 +73,88 @@ app.post("/api/examples/create/code-interpreter", async (c) => {
       },
     ],
   });
-  return c.json({response, outputText: response.output_text});
+  return c.json({ response, outputText: response.output_text });
+});
+
+type Feedback = {
+  nps: number;
+  whatWorked?: string;
+  whatCouldBeImproved?: string;
+};
+function submitFeedback({ nps, whatWorked, whatCouldBeImproved }: Feedback) {
+  console.log("Probably should save this to a database", {
+    nps,
+    whatWorked,
+    whatCouldBeImproved,
+  });
+  return { success: true, assignee: "Bob", submissionId: crypto.randomUUID() };
+}
+
+app.post("/api/examples/create/function-calling", async (c) => {
+  const { feedback } = await c.req.json();
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+
+  const input: OpenAI.Responses.ResponseInputItem[] = [{role: "user", content: feedback}];
+  const tools: OpenAI.Responses.Tool[] = [
+    {
+      type: "function",
+      name: "submitFeedback",
+      strict: true,
+      description: "Used to send feedback from the user",
+      parameters: {
+        type: "object",
+        properties: {
+          nps: {
+            type: "number",
+            description:
+              "A number between 0 and 10 on how likely the user would recommend this demo to a friend or co-worker?",
+          },
+          whatWorked: {
+            type: "string",
+            description: "What the user liked about the demo",
+          },
+          whatCouldBeImproved: {
+            type: "string",
+            description: "What could be improved",
+          },
+        },
+        required: ["nps", "whatWorked", "whatCouldBeImproved"],
+        additionalProperties: false,
+      },
+    },
+  ];
+  const instructions = `The user is going to submit feedback about this demo. 
+      You will tell them that their feedback has been recorded.
+      Ensure to include their feedback submission id in your response as well as who has been assigned their feedback submission.`;
+  const firstResponse = await openai.responses.create({
+    model: "gpt-4.1",
+    input,
+    instructions,
+    tools,
+  });
+  const toolCall = firstResponse.output[0];
+  
+  let finalResponse;
+  let result
+  if (toolCall.type === "function_call" && toolCall.name === "submitFeedback") {
+    const args = JSON.parse(toolCall.arguments);
+    result = submitFeedback(args);
+    // Include the tool call
+    input.push(toolCall);
+    // Append the result so the model can use it
+    input.push({
+      type: "function_call_output",
+      call_id: toolCall.call_id,
+      output: JSON.stringify(result),
+    });
+    finalResponse = await openai.responses.create({
+      model: "gpt-4.1",
+      instructions,
+      input,
+      tools
+    })
+  }
+  return c.json({ firstResponse, finalResponse, outputText: finalResponse?.output_text, result });
 });
 
 export default app;
