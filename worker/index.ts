@@ -26,10 +26,8 @@ app.post("/api/examples/create/streaming", async (c) => {
   return streamText(c, async (stream) => {
     for await (const event of streamedResponse) {
       console.log(event);
-      if (event.type === "response.output_item.added") {
-        if (event.item.type === "message") {
-          stream.write(event.item.content.toString());
-        }
+      if (event.type === "response.output_text.delta") {
+        stream.write(event.delta);
       }
     }
   });
