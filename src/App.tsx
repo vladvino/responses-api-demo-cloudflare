@@ -826,18 +826,24 @@ function RelationshipViewer() {
               'color': '#ffffff',
               'text-valign': 'center',
               'text-halign': 'center',
-              'font-size': '12px',
+              'font-size': '10px',
               'font-weight': 'bold',
+              'font-family': 'system-ui, -apple-system, sans-serif',
+              'text-wrap': 'wrap',
+              'text-max-width': '50px',
               'width': '60px',
               'height': '60px',
               'border-width': '2px',
-              'border-color': '#3730a3'
+              'border-color': '#3730a3',
+              'text-outline-width': '1px',
+              'text-outline-color': '#3730a3',
+              'text-outline-opacity': 0.8
             }
           },
           {
             selector: 'edge',
             style: {
-              'line-color': (ele: any) => {
+              'line-color': (ele: cytoscape.EdgeSingular) => {
                 const type = ele.data('type')
                 switch (type) {
                   case 'family': return '#ef4444'
@@ -848,7 +854,7 @@ function RelationshipViewer() {
                   default: return '#6b7280'
                 }
               },
-              'target-arrow-color': (ele: any) => {
+              'target-arrow-color': (ele: cytoscape.EdgeSingular) => {
                 const type = ele.data('type')
                 switch (type) {
                   case 'family': return '#ef4444'

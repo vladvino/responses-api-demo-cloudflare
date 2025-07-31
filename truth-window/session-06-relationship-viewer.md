@@ -50,10 +50,11 @@
 
 #### Graph Features:
 - **Directed edges** with arrows and labels
-- **Node labels** showing character names
+- **Node labels** showing character names with improved text wrapping
 - **Curved edges** with bezier styling
 - **Auto-rotating edge labels** for readability
 - **Color legend** for relationship type identification
+- **Compact text styling** with 10px font size and text wrapping for better fit
 
 ### 4. **Technical Implementation Details**
 
