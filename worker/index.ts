@@ -6,7 +6,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 app.post("/api/examples/create", async (c) => {
   const { prompt } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
   const response = await openai.responses.create({
     model: "gpt-4.1",
     input: prompt,
@@ -16,7 +16,7 @@ app.post("/api/examples/create", async (c) => {
 
 app.post("/api/examples/create/streaming", async (c) => {
   const { prompt } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
   const streamedResponse = await openai.responses.create({
     model: "gpt-4.1",
     input: prompt,
@@ -34,7 +34,7 @@ app.post("/api/examples/create/streaming", async (c) => {
 
 app.post("/api/examples/create/stored", async (c) => {
   const { word, previous_response_id } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const response = await openai.responses.create({
     model: "gpt-4.1",
@@ -54,7 +54,7 @@ app.post("/api/examples/create/stored", async (c) => {
 
 app.post("/api/examples/create/code-interpreter", async (c) => {
   const { story } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const response = await openai.responses.create({
     model: "gpt-4.1",
@@ -91,7 +91,7 @@ function submitFeedback({ nps, whatWorked, whatCouldBeImproved }: Feedback) {
 
 app.post("/api/examples/create/function-calling", async (c) => {
   const { feedback } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const input: OpenAI.Responses.ResponseInputItem[] = [
     { role: "user", content: feedback },
@@ -108,7 +108,7 @@ app.post("/api/examples/create/function-calling", async (c) => {
           nps: {
             type: "number",
             description:
-              "A number between 0 and 10 on how likely the user would recommend this demo to a friend or co-worker?",
+              "Net Promoter Score: A number between 0 and 10 on how likely the user would recommend this demo to a friend or co-worker?",
           },
           whatWorked: {
             type: "string",
@@ -132,6 +132,7 @@ app.post("/api/examples/create/function-calling", async (c) => {
     input,
     instructions,
     tools,
+    tool_choice: "required"
   });
   const toolCall = firstResponse.output[0];
 
@@ -165,7 +166,7 @@ app.post("/api/examples/create/function-calling", async (c) => {
 
 app.post("/api/examples/create/character-sample", async (c) => {
   const { title } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const response = await openai.responses.create({
     model: "gpt-4.1",
@@ -180,7 +181,7 @@ app.post("/api/examples/create/character-sample", async (c) => {
 
 app.post("/api/examples/create/reasoning", async (c) => {
   const { topic, effort } = await c.req.json();
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const response = await openai.responses.create({
     model: "o4-mini",
@@ -190,7 +191,7 @@ app.post("/api/examples/create/reasoning", async (c) => {
     `,
     input: topic,
     reasoning: {
-      effort,
+      effort, 
     },
   });
   return c.json({ response, outputText: response.output_text });
@@ -264,7 +265,7 @@ app.post("/api/examples/parse/relationships", async (c) => {
     additionalProperties: false,
   };
 
-  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
   const response = await openai.responses.parse({
     model: "gpt-4.1",

@@ -14,7 +14,7 @@ function App() {
             Responsible
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Learn how to use OpenAI's Response API through interactive examples
+            Learn how to use <a href="https://platform.openai.com/docs/api-reference/responses" target="_blank">OpenAI's Responses API</a> through interactive examples
           </p>
         </header>
 
@@ -77,7 +77,7 @@ function BasicExample() {
       </div>
       
       <p className="text-gray-600 mb-6">
-        Enter a prompt and see how OpenAI's Response API generates structured output.
+        Enter a prompt and see how OpenAI's Response API creates a new Response object.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -358,11 +358,11 @@ function WordGameExample() {
         {sentence.length > 0 && (
           <div className="bg-gray-50 border border-gray-200 p-6 rounded-lg">
             <h3 className="font-semibold text-gray-800 mb-3">Story So Far:</h3>
-            <div className="text-lg leading-relaxed">
+            <div className="text-lg leading-relaxed flex flex-wrap gap-2">
               {sentence.map((word, index) => (
                 <span
                   key={index}
-                  className={`mr-2 px-2 py-1 rounded ${
+                  className={`px-2 py-1 rounded inline-block ${
                     index % 2 === 0 
                       ? 'bg-blue-100 text-blue-800' // User words
                       : 'bg-purple-100 text-purple-800' // AI words
