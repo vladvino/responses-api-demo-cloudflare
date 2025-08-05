@@ -5,6 +5,8 @@
 
 This is an educational exploration at the [OpenAI Responses API](https://platform.openai.com/docs/api-reference/responses).
 
+It is running on [Cloudflare Workers](https://developers.cloudflare.com)
+
 Check the API out at [worker/index.ts](./worker/index.ts)
 
 ## Develop
@@ -18,6 +20,12 @@ npm run dev
 ```
 
 ## Deploy
+
+Add your secrets to the Worker
+
+```bash
+npx wrangler secret bulk .dev.vars
+```
 
 ```bash
 npm run deploy
