@@ -12,7 +12,7 @@ Check the API out at [worker/index.ts](./worker/index.ts)
 
 ## Develop
 
-Copy [./example.dev.vars] to ./.dev.vars and replace with your key.
+Copy [./.example.dev.vars](./example.dev.vars) to ./.dev.vars and replace with your key.
 
 OPTIONAL: Modify your BASE_URL
 
