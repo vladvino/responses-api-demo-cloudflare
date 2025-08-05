@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import JSONPretty from 'react-json-pretty'
 import 'react-json-pretty/themes/monikai.css'
+import Markdown from 'markdown-to-jsx'
 import cytoscape from 'cytoscape'
 import './App.css'
 
 function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 via-blue-50 to-indigo-100 flex flex-col">
-      <div className="flex-1 px-6 py-8">
+      <div className="flex-1 w-full px-6 py-8">
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-4">
             Responsible
@@ -26,6 +27,7 @@ function App() {
             <WordGameExample />
             <CodeInterpreterExample />
           </div>
+          <ReasoningExample />
           <FunctionCallingExample />
           <RelationshipViewer />
         </div>
@@ -572,6 +574,148 @@ function CodeInterpreterExample() {
   )
 }
 
+function ReasoningExample() {
+  const [topic, setTopic] = useState('')
+  const [effort, setEffort] = useState<'low' | 'medium' | 'high'>('medium')
+  const [response, setResponse] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [showJson, setShowJson] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!topic.trim()) return
+
+    setLoading(true)
+    try {
+      const res = await fetch('/api/examples/create/reasoning', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic, effort }),
+      })
+      const data = await res.json()
+      setResponse(data)
+    } catch (error) {
+      console.error('Error:', error)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="bg-gradient-to-r from-violet-400 to-rose-500 rounded-full p-2">
+          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800">Reasoning Lesson Plan</h2>
+      </div>
+      
+      <p className="text-gray-600 mb-6">
+        Generate a detailed lesson plan for any topic with customizable effort levels using AI reasoning.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
+            Topic
+          </label>
+          <input
+            id="topic"
+            type="text"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="e.g., 'Introduction to Machine Learning'"
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-gray-900 placeholder-gray-500"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="effort" className="block text-sm font-medium text-gray-700 mb-2">
+            Effort Level
+          </label>
+          <select
+            id="effort"
+            value={effort}
+            onChange={(e) => setEffort(e.target.value as 'low' | 'medium' | 'high')}
+            className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-gray-900"
+          >
+            <option value="low">Low - Basic overview with key points</option>
+            <option value="medium">Medium - Detailed plan with activities</option>
+            <option value="high">High - Comprehensive plan with assessments</option>
+          </select>
+        </div>
+        
+        <button
+          type="submit"
+          disabled={loading || !topic.trim()}
+          className="bg-gradient-to-r from-violet-600 to-rose-600 text-white px-6 py-3 rounded-lg font-medium hover:from-violet-700 hover:to-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 714 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Creating Lesson Plan...
+            </span>
+          ) : (
+            'Generate Lesson Plan'
+          )}
+        </button>
+      </form>
+
+      {response && (
+        <div className="mt-8 space-y-4">
+          <div className="bg-violet-50 border border-violet-200 p-4 rounded-lg">
+            <h3 className="font-semibold text-violet-800 mb-2">Lesson Plan:</h3>
+            <div className="text-violet-700 prose prose-sm max-w-none">
+              <Markdown>{response.outputText}</Markdown>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg">
+            <button
+              onClick={() => setShowJson(!showJson)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+            >
+              <span className="font-semibold text-gray-700">Full API Response</span>
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showJson && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <div className="rounded-lg overflow-hidden bg-gray-800">
+                  <JSONPretty 
+                    data={response}
+                    theme={{
+                      main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                      error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                      key: 'color:#f92672;',
+                      string: 'color:#a6e22e;',
+                      value: 'color:#ae81ff;',
+                      boolean: 'color:#ae81ff;',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function FunctionCallingExample() {
   const [feedback, setFeedback] = useState('')
   const [result, setResult] = useState<any>(null)
@@ -1027,7 +1171,7 @@ function RelationshipViewer() {
 
 function Footer() {
   return (
-    <footer className="bg-white/80 backdrop-blur-sm border-t border-gray-200 py-6 px-6 sticky bottom-0">
+    <footer className="w-full bg-white/80 backdrop-blur-sm border-t border-gray-200 py-6 px-6 sticky bottom-0">
       <div className="max-w-7xl mx-auto text-center">
         <div className="text-gray-600 mb-2">
           Built with 🧡 on{' '}

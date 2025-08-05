@@ -178,6 +178,24 @@ app.post("/api/examples/create/character-sample", async (c) => {
   return c.json({ outputText: response.output_text });
 });
 
+app.post("/api/examples/create/reasoning", async (c) => {
+    const { topic, effort } = await c.req.json();
+  const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
+
+  const response = await openai.responses.create({
+    model: "o4-mini",
+    instructions: `You help plan educational lessons.
+    The user will tell you they are trying to learn.
+    Your job is to create a detailed list of prerequisite skills and information, the user should ensure they know.
+    `,
+    input: topic,
+    reasoning: {
+      effort,
+    }
+  });
+  return c.json({ response, outputText: response.output_text });
+});
+
 app.post("/api/examples/parse/relationships", async (c) => {
   const { text } = await c.req.json();
 
