@@ -179,7 +179,7 @@ app.post("/api/examples/create/character-sample", async (c) => {
 });
 
 app.post("/api/examples/create/reasoning", async (c) => {
-    const { topic, effort } = await c.req.json();
+  const { topic, effort } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
 
   const response = await openai.responses.create({
@@ -191,7 +191,7 @@ app.post("/api/examples/create/reasoning", async (c) => {
     input: topic,
     reasoning: {
       effort,
-    }
+    },
   });
   return c.json({ response, outputText: response.output_text });
 });
@@ -263,7 +263,7 @@ app.post("/api/examples/parse/relationships", async (c) => {
     },
     additionalProperties: false,
   };
-  
+
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY });
 
   const response = await openai.responses.parse({
@@ -273,12 +273,11 @@ app.post("/api/examples/parse/relationships", async (c) => {
       format: {
         type: "json_schema",
         name: "relationships",
-        schema: jsonSchema
-      }
-    }
+        schema: jsonSchema,
+      },
+    },
   });
   return c.json(response.output_parsed);
-
 });
 
 export default app;
