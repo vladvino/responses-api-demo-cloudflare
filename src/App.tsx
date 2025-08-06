@@ -43,6 +43,8 @@ function BasicExample() {
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [showJson, setShowJson] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,6 +61,7 @@ function BasicExample() {
       })
       const data = await res.json()
       setResponse(data)
+      setLastRequest(data.openaiRequest)
     } catch (error) {
       console.error('Error:', error)
     }
@@ -121,12 +124,49 @@ function BasicExample() {
             <p className="text-green-700 whitespace-pre-wrap">{response.outputText}</p>
           </div>
 
+          {lastRequest && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowRequest(!showRequest)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Latest API Request</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showRequest && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={lastRequest}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-gray-50 border border-gray-200 rounded-lg">
             <button
               onClick={() => setShowJson(!showJson)}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
             >
-              <span className="font-semibold text-gray-700">Full API Response</span>
+              <span className="font-semibold text-gray-700">Latest API Response</span>
               <svg
                 className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
                 fill="none"
@@ -165,6 +205,8 @@ function StreamingExample() {
   const [prompt, setPrompt] = useState('')
   const [streamedText, setStreamedText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -181,6 +223,23 @@ function StreamingExample() {
         },
         body: JSON.stringify({ prompt }),
       })
+      
+      console.log('Streaming response status:', response.status)
+      console.log('Streaming response headers:', Object.fromEntries(response.headers.entries()))
+      
+      // Get OpenAI request data from header
+      const openaiRequestHeader = response.headers.get('X-OpenAI-Request')
+      if (openaiRequestHeader) {
+        setLastRequest(JSON.parse(openaiRequestHeader))
+        console.log('Got OpenAI request data from header')
+      } else {
+        console.log('No X-OpenAI-Request header found')
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
 
       if (!response.body) {
         throw new Error('No response body')
@@ -194,10 +253,11 @@ function StreamingExample() {
         if (done) break
 
         const chunk = decoder.decode(value, { stream: true })
+        console.log('Received chunk:', chunk)
         setStreamedText(prev => prev + chunk)
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Streaming error:', error)
     }
     setLoading(false)
   }
@@ -271,6 +331,45 @@ function StreamingExample() {
           </div>
         </div>
       )}
+
+      {lastRequest && (
+        <div className="mt-8">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg">
+            <button
+              onClick={() => setShowRequest(!showRequest)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+            >
+              <span className="font-semibold text-gray-700">Latest API Request</span>
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showRequest && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <div className="rounded-lg overflow-hidden bg-gray-800">
+                  <JSONPretty 
+                    data={lastRequest}
+                    theme={{
+                      main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                      error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                      key: 'color:#f92672;',
+                      string: 'color:#a6e22e;',
+                      value: 'color:#ae81ff;',
+                      boolean: 'color:#ae81ff;',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -282,6 +381,8 @@ function WordGameExample() {
   const [previousResponseId, setPreviousResponseId] = useState<string | null>(null)
   const [lastResponse, setLastResponse] = useState<any>(null)
   const [showJson, setShowJson] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -305,6 +406,7 @@ function WordGameExample() {
       setSentence(prev => [...prev, currentWord.trim(), data.word])
       setPreviousResponseId(data.previous_response_id)
       setLastResponse(data)
+      setLastRequest(data.openaiRequest)
       setCurrentWord('')
     } catch (error) {
       console.error('Error:', error)
@@ -318,6 +420,8 @@ function WordGameExample() {
     setPreviousResponseId(null)
     setLastResponse(null)
     setShowJson(false)
+    setLastRequest(null)
+    setShowRequest(false)
   }
 
   return (
@@ -410,6 +514,43 @@ function WordGameExample() {
           </div>
         </form>
 
+        {lastRequest && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg">
+            <button
+              onClick={() => setShowRequest(!showRequest)}
+              className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+            >
+              <span className="font-semibold text-gray-700">Latest API Request</span>
+              <svg
+                className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            
+            {showRequest && (
+              <div className="border-t border-gray-200 p-4 bg-gray-50">
+                <div className="rounded-lg overflow-hidden bg-gray-800">
+                  <JSONPretty 
+                    data={lastRequest}
+                    theme={{
+                      main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                      error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                      key: 'color:#f92672;',
+                      string: 'color:#a6e22e;',
+                      value: 'color:#ae81ff;',
+                      boolean: 'color:#ae81ff;',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {lastResponse && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg">
             <button
@@ -456,6 +597,8 @@ function CodeInterpreterExample() {
   const [result, setResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [showJson, setShowJson] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -470,10 +613,21 @@ function CodeInterpreterExample() {
         },
         body: JSON.stringify({ story }),
       })
+      
+      console.log('Code interpreter response status:', res.status)
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Code interpreter error:', errorText)
+        throw new Error(`HTTP ${res.status}: ${errorText}`)
+      }
+      
       const data = await res.json()
+      console.log('Code interpreter response:', data)
       setResult(data)
+      setLastRequest(data.openaiRequest)
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Code interpreter error:', error)
     }
     setLoading(false)
   }
@@ -534,12 +688,49 @@ function CodeInterpreterExample() {
             <p className="text-teal-700 whitespace-pre-wrap">{result.outputText}</p>
           </div>
 
+          {lastRequest && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowRequest(!showRequest)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Latest API Request</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showRequest && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={lastRequest}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-gray-50 border border-gray-200 rounded-lg">
             <button
               onClick={() => setShowJson(!showJson)}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
             >
-              <span className="font-semibold text-gray-700">Full API Response</span>
+              <span className="font-semibold text-gray-700">Latest API Response</span>
               <svg
                 className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
                 fill="none"
@@ -580,6 +771,8 @@ function ReasoningExample() {
   const [response, setResponse] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [showJson, setShowJson] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -596,6 +789,7 @@ function ReasoningExample() {
       })
       const data = await res.json()
       setResponse(data)
+      setLastRequest(data.openaiRequest)
     } catch (error) {
       console.error('Error:', error)
     }
@@ -676,12 +870,49 @@ function ReasoningExample() {
             </div>
           </div>
 
+          {lastRequest && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowRequest(!showRequest)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Latest API Request</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showRequest && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={lastRequest}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-gray-50 border border-gray-200 rounded-lg">
             <button
               onClick={() => setShowJson(!showJson)}
               className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
             >
-              <span className="font-semibold text-gray-700">Full API Response</span>
+              <span className="font-semibold text-gray-700">Latest API Response</span>
               <svg
                 className={`w-5 h-5 text-gray-500 transition-transform ${showJson ? 'rotate-180' : ''}`}
                 fill="none"
@@ -722,6 +953,8 @@ function FunctionCallingExample() {
   const [loading, setLoading] = useState(false)
   const [showFirstResponse, setShowFirstResponse] = useState(false)
   const [showFinalResponse, setShowFinalResponse] = useState(false)
+  const [lastRequest, setLastRequest] = useState<any>(null)
+  const [showRequest, setShowRequest] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -738,6 +971,7 @@ function FunctionCallingExample() {
       })
       const data = await res.json()
       setResult(data)
+      setLastRequest(data.openaiRequests.first)
     } catch (error) {
       console.error('Error:', error)
     }
@@ -799,6 +1033,43 @@ function FunctionCallingExample() {
             <h3 className="font-semibold text-emerald-800 mb-2">Response:</h3>
             <p className="text-emerald-700 whitespace-pre-wrap">{result.outputText}</p>
           </div>
+
+          {lastRequest && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setShowRequest(!showRequest)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-100 transition-colors bg-transparent"
+              >
+                <span className="font-semibold text-gray-700">Latest API Request</span>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${showRequest ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showRequest && (
+                <div className="border-t border-gray-200 p-4 bg-gray-50">
+                  <div className="rounded-lg overflow-hidden bg-gray-800">
+                    <JSONPretty 
+                      data={lastRequest}
+                      theme={{
+                        main: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;padding:16px;',
+                        error: 'line-height:1.3;color:#66d9ef;background:transparent;overflow:auto;',
+                        key: 'color:#f92672;',
+                        string: 'color:#a6e22e;',
+                        value: 'color:#ae81ff;',
+                        boolean: 'color:#ae81ff;',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {result.result && (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">

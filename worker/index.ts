@@ -7,24 +7,27 @@ const app = new Hono<{ Bindings: Env }>();
 app.post("/api/examples/create", async (c) => {
   const { prompt } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
-  const response = await openai.responses.create({
+  const requestData = {
     model: "gpt-4.1",
     input: prompt,
-  });
-  return c.json({ response, outputText: response.output_text });
+  };
+  const response = await openai.responses.create(requestData);
+  return c.json({ response, outputText: response.output_text, openaiRequest: requestData });
 });
 
 app.post("/api/examples/create/streaming", async (c) => {
   const { prompt } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
-  const streamedResponse = await openai.responses.create({
-    model: "gpt-4.1",
+  const requestData = {
+    model: "gpt-4o",
     input: prompt,
     stream: true,
-  });
+  };
+  const streamedResponse = await openai.responses.create(requestData);
   c.header("Content-Encoding", "Identity");
+  c.header("X-OpenAI-Request", JSON.stringify(requestData));
   return streamText(c, async (stream) => {
-    for await (const event of streamedResponse) {
+    for await (const event of streamedResponse as any) {
       if (event.type === "response.output_text.delta") {
         stream.write(event.delta);
       }
@@ -36,7 +39,7 @@ app.post("/api/examples/create/stored", async (c) => {
   const { word, previous_response_id } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
-  const response = await openai.responses.create({
+  const requestData = {
     model: "gpt-4.1",
     instructions: `You are playing a game of one word at a time. 
         The user is going to respond with a single word that moves the story forward. 
@@ -44,11 +47,13 @@ app.post("/api/examples/create/stored", async (c) => {
     input: word,
     store: true, //this is the default, being explicit
     previous_response_id,
-  });
+  };
+  const response = await openai.responses.create(requestData);
   return c.json({
     response,
     previous_response_id: response.id,
     word: response.output_text,
+    openaiRequest: requestData,
   });
 });
 
@@ -56,23 +61,22 @@ app.post("/api/examples/create/code-interpreter", async (c) => {
   const { story } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
-  const response = await openai.responses.create({
-    model: "gpt-4.1",
+  const requestData = {
+    model: "gpt-4o",
     instructions: `Your job is to calculate how much time was spent based on free form text.
       Then use that time to figure out how much it would've cost in US minimum wage of $15.
       Respond to the user with how much time you estimated and total amount they would have been paid using the python tool.
     `,
     input: story,
-    include: ["code_interpreter_call.outputs"],
-    tool_choice: "required",
     tools: [
       {
-        type: "code_interpreter",
-        container: { type: "auto" },
+        type: "code_interpreter" as const,
+        container: { type: "auto" as const },
       },
     ],
-  });
-  return c.json({ response, outputText: response.output_text });
+  };
+  const response = await openai.responses.create(requestData);
+  return c.json({ response, outputText: response.output_text, openaiRequest: requestData });
 });
 
 type Feedback = {
@@ -127,17 +131,19 @@ app.post("/api/examples/create/function-calling", async (c) => {
   const instructions = `The user is going to submit feedback about this demo. 
       You will tell them that their feedback has been recorded.
       Ensure to include their feedback submission id in your response as well as who has been assigned their feedback submission.`;
-  const firstResponse = await openai.responses.create({
+  const firstRequestData = {
     model: "gpt-4.1",
     input,
     instructions,
     tools,
-    tool_choice: "required"
-  });
+    tool_choice: "required" as const
+  };
+  const firstResponse = await openai.responses.create(firstRequestData);
   const toolCall = firstResponse.output[0];
 
   let finalResponse;
   let result;
+  let finalRequestData;
   if (toolCall.type === "function_call" && toolCall.name === "submitFeedback") {
     const args = JSON.parse(toolCall.arguments);
     result = submitFeedback(args);
@@ -149,18 +155,23 @@ app.post("/api/examples/create/function-calling", async (c) => {
       call_id: toolCall.call_id,
       output: JSON.stringify(result),
     });
-    finalResponse = await openai.responses.create({
+    finalRequestData = {
       model: "gpt-4.1",
       instructions,
       input,
       tools,
-    });
+    };
+    finalResponse = await openai.responses.create(finalRequestData);
   }
   return c.json({
     firstResponse,
     finalResponse,
     outputText: finalResponse?.output_text,
     result,
+    openaiRequests: {
+      first: firstRequestData,
+      final: finalRequestData,
+    },
   });
 });
 
@@ -168,22 +179,23 @@ app.post("/api/examples/create/character-sample", async (c) => {
   const { title } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
-  const response = await openai.responses.create({
+  const requestData = {
     model: "gpt-4.1",
     instructions: `You will take a title of a piece of content and use your knowledge to create a character synopsis.
     Use first and last names for the characters if you know them.
     Be detailed in the characters are related and what situations they have interacted.
     Write this in paragraph format.`,
     input: title,
-  });
-  return c.json({ outputText: response.output_text });
+  };
+  const response = await openai.responses.create(requestData);
+  return c.json({ outputText: response.output_text, openaiRequest: requestData });
 });
 
 app.post("/api/examples/create/reasoning", async (c) => {
   const { topic, effort } = await c.req.json();
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
-  const response = await openai.responses.create({
+  const requestData = {
     model: "o4-mini",
     instructions: `You help plan educational lessons.
     The user will tell you they are trying to learn.
@@ -193,8 +205,9 @@ app.post("/api/examples/create/reasoning", async (c) => {
     reasoning: {
       effort, 
     },
-  });
-  return c.json({ response, outputText: response.output_text });
+  };
+  const response = await openai.responses.create(requestData);
+  return c.json({ response, outputText: response.output_text, openaiRequest: requestData });
 });
 
 app.post("/api/examples/parse/relationships", async (c) => {
@@ -267,18 +280,19 @@ app.post("/api/examples/parse/relationships", async (c) => {
 
   const openai = new OpenAI({ apiKey: c.env.OPENAI_API_KEY, baseURL: c.env.BASE_URL });
 
-  const response = await openai.responses.parse({
+  const requestData = {
     model: "gpt-4.1",
     input: text,
     text: {
       format: {
-        type: "json_schema",
+        type: "json_schema" as const,
         name: "relationships",
         schema: jsonSchema,
       },
     },
-  });
-  return c.json(response.output_parsed);
+  };
+  const response = await openai.responses.parse(requestData);
+  return c.json({ ...(response.output_parsed as any || {}), openaiRequest: requestData });
 });
 
 export default app;
